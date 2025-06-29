@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Dividend Tracker with Live Calculations</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+  table { border-collapse: collapse; width: 100%; max-width: 1000px; }
+  th, td { border: 1px solid #ccc; padding: 8px; text-align: center; }
+  th { background: #333; color: white; }
+  input[type=number], input[type=text], input[type=date] { width: 90px; }
+  td:nth-child(1) {
+    min-width: 180px;
+    white-space: normal;
+    text-align: left;
+  }
+  #totalDivContainer { margin-top: 15px; font-weight: bold; font-size: 1.1em; }
+</style>
+</head>
+<body>
+
+<h2>Manual Dividend Tracker — Live Total Dividend Calculation</h2>
+<p>Enter shares and dividend per share, and total dividend updates live.</p>
+
+<table id="stockTable">
+  <thead>
+    <tr>
+      <th>Company</th>
+      <th>Ticker</th>
+      <th>Shares</th>
+      <th>Live Price</th>
+      <th>Dividend / Share</th>
+      <th>Total Dividend</th>
+      <th>Annual Yield %</th>
+      <th>Ex-Dividend Date</th>
+      <th>Payment Date</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>United Parcel Service</td>
+      <td>UPS</td>
+      <td><input type="number" min="0" value="10" class="shares" /></td>
+      <td><input type="number" step="0.01" value="175" class="price" /></td>
+      <td><input type="number" step="0.001" value="1.64" class="dividend" /></td>
+      <td class="totalDiv">$0.00</td>
+      <td class="yield">0%</td>
+      <td><input type="date" value="2025-05-19"></td>
+      <td><input type="date" value="2025-06-05"></td>
+    </tr>
+    <tr>
+      <td>Kraft Heinz Co.</td>
+      <td>KHC</td>
+      <td><input type="number" min="0" value="15" class="shares" /></td>
+      <td><input type="number" step="0.01" value="40" class="price" /></td>
+      <td><input type="number" step="0.001" value="0.40" class="dividend" /></td>
+      <td class="totalDiv">$0.00</td>
+      <td class="yield">0%</td>
+      <td><input type="date" value="2025-05-30"></td>
+      <td><input type="date" value="2025-06-27"></td>
+    </tr>
+    <tr>
+      <td>Novartis AG</td>
+      <td>NVO</td>
+      <td><input type="number" min="0" value="12" class="shares" /></td>
+      <td><input type="number" step="0.01" value="95" class="price" /></td>
+      <td><input type="number" step="0.001" value="1.099" class="dividend" /></td>
+      <td class="totalDiv">$0.00</td>
+      <td class="yield">0%</td>
+      <td><input type="date" value="2025-03-31"></td>
+      <td><input type="date" value="2025-04-08"></td>
+    </tr>
+  </tbody>
+</table>
+
+<div id="totalDivContainer">Total Dividend Income: $0.00</div>
+
+<script>
+function updateTotals() {
+  const rows = document.querySelectorAll('#stockTable tbody tr');
+  let grandTotal = 0;
+
+  rows.forEach(row => {
+    const sharesInput = row.querySelector('input.shares');
+    const priceInput = row.querySelector('input.price');
+    const dividendInput = row.querySelector('input.dividend');
+    const totalDivCell = row.querySelector('.totalDiv');
+    const yieldCell = row.querySelector('.yield');
+
+    const shares = parseFloat(sharesInput.value) || 0;
+    const price = parseFloat(priceInput.value) || 0;
+    const dividend = parseFloat(dividendInput.value) || 0;
+
+    const totalDiv = shares * dividend;
+    grandTotal += totalDiv;
+
+    totalDivCell.textContent = `$${totalDiv.toFixed(2)}`;
+
+    const annualYield = price ? (dividend * 4 / price) * 100 : 0;
+    yieldCell.textContent = `${annualYield.toFixed(2)}%`;
+  });
+
+  document.getElementById('totalDivContainer').textContent = `Total Dividend Income: $${grandTotal.toFixed(2)}`;
+}
+
+// Initialize totals on page load
+window.onload = updateTotals;
+
+// Update totals on any input change
+document.querySelectorAll('#stockTable tbody input').forEach(input => {
+  input.addEventListener('input', updateTotals);
+});
+</script>
+
+</body>
+</html>
