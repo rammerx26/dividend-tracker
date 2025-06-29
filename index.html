@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dividend Tracker</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dividend Tracker with Monthly Forecast</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -13,10 +13,16 @@
       background: #f4f7fa;
       color: #333;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
-      margin-bottom: 30px;
       color: #1a73e8;
+    }
+    h1 {
+      margin-bottom: 30px;
+    }
+    h2 {
+      margin-top: 40px;
+      margin-bottom: 10px;
     }
     .table-container {
       overflow-x: auto;
@@ -30,6 +36,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-bottom: 10px;
     }
     th {
       background: #1a73e8;
@@ -67,6 +74,23 @@
       border-radius: 6px;
       cursor: pointer;
       margin: 10px 0;
+      display: block;
+      max-width: 1000px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    /* Monthly forecast table styling */
+    #monthlyForecast thead th {
+      border-bottom:1px solid #ccc;
+      text-align:left;
+      padding:8px;
+    }
+    #monthlyForecast tbody td {
+      padding:8px;
+      border-bottom:1px solid #eee;
+    }
+    #monthlyForecast tbody td:nth-child(2) {
+      text-align: right;
     }
   </style>
 </head>
@@ -75,7 +99,7 @@
 <h1>📊 My Dividend Tracker</h1>
 
 <div class="table-container">
-  <table id="stockTable">
+  <table id="stockTable" aria-label="Dividend stocks table">
     <thead>
       <tr>
         <th>Company</th>
@@ -92,12 +116,21 @@
     <tbody></tbody>
   </table>
 
-  <div style="text-align: right;">
-    <button onclick="addRow()" class="add-button">➕ Add New Company</button>
-  </div>
+  <button onclick="addRow()" class="add-button" aria-label="Add new company row">➕ Add New Company</button>
 </div>
 
-<div id="totalDivContainer">Total Dividend Income: $0.00</div>
+<div id="totalDivContainer" aria-live="polite">Total Dividend Income: $0.00</div>
+
+<h2>📅 Monthly Dividend Payout Forecast</h2>
+<table id="monthlyForecast" aria-label="Monthly dividend payout forecast" style="max-width:1000px; margin:auto; border-collapse: collapse;">
+  <thead>
+    <tr>
+      <th>Month</th>
+      <th>Expected Payout ($)</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
 
 <script>
 let rowCount = 0;
@@ -111,9 +144,9 @@ function addRow(data = {}) {
   newRow.innerHTML = `
     <td><input type="text" placeholder="Company" value="${data.company || ''}" /></td>
     <td><input type="text" class="ticker" placeholder="Ticker" value="${data.ticker || ''}" /></td>
-    <td><input type="number" class="shares" value="${data.shares || ''}" /></td>
-    <td><input type="number" class="price" value="${data.price || ''}" /></td>
-    <td><input type="number" class="dividend" value="${data.dividend || ''}" /></td>
+    <td><input type="number" class="shares" min="0" value="${data.shares || ''}" /></td>
+    <td><input type="number" class="price" readonly value="${data.price || ''}" /></td>
+    <td><input type="number" class="dividend" min="0" step="0.01" value="${data.dividend || ''}" /></td>
     <td class="totalDiv">$0.00</td>
     <td class="yield">${data.yield || '0'}%</td>
     <td><input type="date" class="exdiv" value="${data.exdiv || ''}" /></td>
@@ -125,6 +158,7 @@ function addRow(data = {}) {
   newRow.querySelectorAll('input').forEach(input =>
     input.addEventListener('input', () => {
       updateTotals();
+      updateMonthlyForecast();
       saveData();
     })
   );
@@ -136,6 +170,7 @@ function addRow(data = {}) {
   });
 
   updateTotals();
+  updateMonthlyForecast();
 }
 
 function updateTotals() {
@@ -159,18 +194,66 @@ function updateTotals() {
     `Total Dividend Income: $${grandTotal.toFixed(2)}`;
 }
 
+function updateMonthlyForecast() {
+  const rows = document.querySelectorAll('#stockTable tbody tr');
+  const monthTotals = {};
+
+  rows.forEach(row => {
+    const shares = parseFloat(row.querySelector('.shares')?.value) || 0;
+    const dividend = parseFloat(row.querySelector('.dividend')?.value) || 0;
+    const payDateStr = row.querySelector('.paydate')?.value;
+    if (!payDateStr || shares === 0 || dividend === 0) return;
+
+    const payDate = new Date(payDateStr);
+    if (isNaN(payDate)) return;
+
+    // Format: Month Year, e.g. "July 2025"
+    const monthYear = payDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+    const payout = shares * dividend;
+
+    monthTotals[monthYear] = (monthTotals[monthYear] || 0) + payout;
+  });
+
+  const tbody = document.querySelector('#monthlyForecast tbody');
+  tbody.innerHTML = ''; // clear old
+
+  // Sort months chronologically
+  const sortedMonths = Object.keys(monthTotals).sort((a,b) => new Date(a) - new Date(b));
+
+  sortedMonths.forEach(month => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${month}</td>
+      <td>$${monthTotals[month].toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  if (sortedMonths.length === 0) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="2" style="text-align:center; color:#666;">No payouts found</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
 function fetchStockData(symbol, row) {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail`;
 
   fetch(url)
     .then(res => res.json())
     .then(data => {
-      const summary = data.quoteSummary?.result?.[0]?.summaryDetail;
-      if (!summary) throw new Error('No data');
+      const summary = data?.quoteSummary?.result?.[0]?.summaryDetail;
+
+      if (!summary) {
+        alert(`⚠️ No data available for "${symbol}" — please check if the ticker is correct.`);
+        console.warn("Missing summaryDetail", data);
+        return;
+      }
 
       const price = summary.previousClose?.raw || 0;
       const dividend = summary.dividendRate?.raw || 0;
       const yieldPct = summary.dividendYield?.raw ? summary.dividendYield.raw * 100 : 0;
+
       const exDivDate = summary.exDividendDate?.raw;
       const payDate = summary.dividendDate?.raw;
 
@@ -189,10 +272,11 @@ function fetchStockData(symbol, row) {
       }
 
       updateTotals();
+      updateMonthlyForecast();
       saveData();
     })
     .catch(err => {
-      alert(`Could not fetch data for ${symbol}`);
+      alert(`❌ Could not fetch data for ${symbol}`);
       console.error(err);
     });
 }
@@ -230,6 +314,8 @@ function loadData() {
 
 window.onload = function () {
   loadData();
+  updateTotals();
+  updateMonthlyForecast();
 };
 </script>
 
