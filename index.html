@@ -173,6 +173,43 @@ function addRow(data = {}) {
   updateMonthlyForecast();
 }
 
+// Preload UPS, KHC, PFE on load if no saved data
+function preloadStocks() {
+  const stocks = [
+    {
+      company: "United Parcel Service",
+      ticker: "UPS",
+      shares: 10,
+      price: 210.30,
+      dividend: 4.32,
+      yield: "2.06",
+      exdiv: "2024-08-01",
+      paydate: "2024-09-01"
+    },
+    {
+      company: "Kraft Heinz Co.",
+      ticker: "KHC",
+      shares: 20,
+      price: 35.60,
+      dividend: 1.60,
+      yield: "4.49",
+      exdiv: "2024-11-30",
+      paydate: "2024-12-15"
+    },
+    {
+      company: "Pfizer Inc.",
+      ticker: "PFE",
+      shares: 50,
+      price: 28.80,
+      dividend: 1.64,
+      yield: "5.69",
+      exdiv: "2024-07-26",
+      paydate: "2024-09-03"
+    }
+  ];
+  stocks.forEach(stock => addRow(stock));
+}
+
 function updateTotals() {
   const rows = document.querySelectorAll('#stockTable tbody tr');
   let grandTotal = 0;
@@ -207,7 +244,6 @@ function updateMonthlyForecast() {
     const payDate = new Date(payDateStr);
     if (isNaN(payDate)) return;
 
-    // Format: Month Year, e.g. "July 2025"
     const monthYear = payDate.toLocaleString('default', { month: 'long', year: 'numeric' });
     const payout = shares * dividend;
 
@@ -215,9 +251,8 @@ function updateMonthlyForecast() {
   });
 
   const tbody = document.querySelector('#monthlyForecast tbody');
-  tbody.innerHTML = ''; // clear old
+  tbody.innerHTML = '';
 
-  // Sort months chronologically
   const sortedMonths = Object.keys(monthTotals).sort((a,b) => new Date(a) - new Date(b));
 
   sortedMonths.forEach(month => {
@@ -308,7 +343,7 @@ function loadData() {
     const data = JSON.parse(stored);
     data.forEach(row => addRow(row));
   } else {
-    addRow(); // add default empty row
+    preloadStocks();
   }
 }
 
