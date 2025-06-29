@@ -95,11 +95,43 @@
       <!-- You can duplicate this row for more companies -->
     </tbody>
   </table>
+
+  <div style="text-align: right; margin-top: 10px;">
+  <button onclick="addRow()" style="padding: 10px 16px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer;">
+    ➕ Add New Company
+  </button>
+</div>
+
 </div>
 
 <div id="totalDivContainer">Total Dividend Income: $0.00</div>
 
 <script>
+function addRow() {
+  const tbody = document.querySelector('#stockTable tbody');
+  const newRow = document.createElement('tr');
+
+  newRow.innerHTML = `
+    <td><input type="text" placeholder="Company name" style="width: 150px;" /></td>
+    <td><input type="text" placeholder="Ticker" style="width: 80px;" /></td>
+    <td><input type="number" class="shares" value="0" /></td>
+    <td><input type="number" class="price" step="0.01" value="0" /></td>
+    <td><input type="number" class="dividend" step="0.001" value="0" /></td>
+    <td class="totalDiv">$0.00</td>
+    <td class="yield">0%</td>
+    <td><input type="date" /></td>
+    <td><input type="date" /></td>
+  `;
+
+  tbody.appendChild(newRow);
+
+  // Add listeners to new inputs
+  newRow.querySelectorAll('input').forEach(input =>
+    input.addEventListener('input', updateTotals)
+  );
+}
+
+  
 function updateTotals() {
   const rows = document.querySelectorAll('#stockTable tbody tr');
   let grandTotal = 0;
