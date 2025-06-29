@@ -45,7 +45,7 @@
     td:nth-child(1) {
       text-align: left;
     }
-    input[type=number], input[type=date] {
+    input[type=number], input[type=date], input[type=text] {
       width: 90px;
       padding: 5px;
       border: 1px solid #ccc;
@@ -58,6 +58,15 @@
       font-weight: bold;
       font-size: 1.1em;
       color: #0b8043;
+    }
+    .add-button {
+      padding: 10px 16px;
+      background-color: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 10px 0;
     }
   </style>
 </head>
@@ -80,37 +89,75 @@
         <th>Pay Date</th>
       </tr>
     </thead>
-    <tbody>
-      <tr>
-        <td>United Parcel Service</td>
-        <td>UPS</td>
-        <td><input type="number" value="10" class="shares" /></td>
-        <td><input type="number" value="175" class="price" /></td>
-        <td><input type="number" value="1.64" class="dividend" /></td>
-        <td class="totalDiv">$0.00</td>
-        <td class="yield">0%</td>
-        <td><input type="date" value="2025-05-19" /></td>
-        <td><input type="date" value="2025-06-05" /></td>
-      </tr>
-      <!-- You can duplicate this row for more companies -->
-    </tbody>
+    <tbody></tbody>
   </table>
 
-  <div style="text-align: right; margin-top: 10px;">
-  <button onclick="addRow()" style="padding: 10px 16px; background-color: #1a73e8; color: white; border: none; border-radius: 6px; cursor: pointer;">
-    ➕ Add New Company
-  </button>
-</div>
-
+  <div style="text-align: right;">
+    <button onclick="addRow()" class="add-button">➕ Add New Company</button>
+  </div>
 </div>
 
 <div id="totalDivContainer">Total Dividend Income: $0.00</div>
 
 <script>
-  window.onload = function () {
-  loadData();
-};
+let rowCount = 0;
 
+function addRow(data = {}) {
+  const tbody = document.querySelector('#stockTable tbody');
+  const newRow = document.createElement('tr');
+  const id = `row-${rowCount++}`;
+  newRow.setAttribute('data-id', id);
+
+  newRow.innerHTML = `
+    <td><input type="text" placeholder="Company" value="${data.company || ''}" /></td>
+    <td><input type="text" class="ticker" placeholder="Ticker" value="${data.ticker || ''}" /></td>
+    <td><input type="number" class="shares" value="${data.shares || ''}" /></td>
+    <td><input type="number" class="price" value="${data.price || ''}" /></td>
+    <td><input type="number" class="dividend" value="${data.dividend || ''}" /></td>
+    <td class="totalDiv">$0.00</td>
+    <td class="yield">${data.yield || '0'}%</td>
+    <td><input type="date" class="exdiv" value="${data.exdiv || ''}" /></td>
+    <td><input type="date" class="paydate" value="${data.paydate || ''}" /></td>
+  `;
+
+  tbody.appendChild(newRow);
+
+  newRow.querySelectorAll('input').forEach(input =>
+    input.addEventListener('input', () => {
+      updateTotals();
+      saveData();
+    })
+  );
+
+  const tickerInput = newRow.querySelector('.ticker');
+  tickerInput.addEventListener('change', function () {
+    const symbol = tickerInput.value.trim().toUpperCase();
+    if (symbol) fetchStockData(symbol, newRow);
+  });
+
+  updateTotals();
+}
+
+function updateTotals() {
+  const rows = document.querySelectorAll('#stockTable tbody tr');
+  let grandTotal = 0;
+
+  rows.forEach(row => {
+    const shares = parseFloat(row.querySelector('.shares')?.value) || 0;
+    const price = parseFloat(row.querySelector('.price')?.value) || 0;
+    const dividend = parseFloat(row.querySelector('.dividend')?.value) || 0;
+
+    const total = shares * dividend;
+    grandTotal += total;
+
+    row.querySelector('.totalDiv').textContent = `$${total.toFixed(2)}`;
+    const yieldVal = price > 0 ? (dividend * 4 / price) * 100 : 0;
+    row.querySelector('.yield').textContent = `${yieldVal.toFixed(2)}%`;
+  });
+
+  document.getElementById('totalDivContainer').textContent =
+    `Total Dividend Income: $${grandTotal.toFixed(2)}`;
+}
 
 function fetchStockData(symbol, row) {
   const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail`;
@@ -119,13 +166,11 @@ function fetchStockData(symbol, row) {
     .then(res => res.json())
     .then(data => {
       const summary = data.quoteSummary?.result?.[0]?.summaryDetail;
-
       if (!summary) throw new Error('No data');
 
       const price = summary.previousClose?.raw || 0;
       const dividend = summary.dividendRate?.raw || 0;
       const yieldPct = summary.dividendYield?.raw ? summary.dividendYield.raw * 100 : 0;
-
       const exDivDate = summary.exDividendDate?.raw;
       const payDate = summary.dividendDate?.raw;
 
@@ -144,6 +189,7 @@ function fetchStockData(symbol, row) {
       }
 
       updateTotals();
+      saveData();
     })
     .catch(err => {
       alert(`Could not fetch data for ${symbol}`);
@@ -151,53 +197,13 @@ function fetchStockData(symbol, row) {
     });
 }
 
-  
-let rowCount = 0; // Global counter
-
-function addRow(data = {}) {
-  const tbody = document.querySelector('#stockTable tbody');
-  const newRow = document.createElement('tr');
-  const id = `row-${rowCount++}`;
-  newRow.setAttribute('data-id', id);
-
-  newRow.innerHTML = `
-    <td><input type="text" placeholder="Company" value="${data.company || ''}" /></td>
-    <td><input type="text" class="ticker" placeholder="Ticker" value="${data.ticker || ''}" /></td>
-    <td><input type="number" class="shares" value="${data.shares || 0}" /></td>
-    <td><input type="number" class="price" step="0.01" value="${data.price || 0}" /></td>
-    <td><input type="number" class="dividend" step="0.01" value="${data.dividend || 0}" /></td>
-    <td class="totalDiv">$0.00</td>
-    <td class="yield">${data.yield || 0}%</td>
-    <td><input type="date" class="exdiv" value="${data.exdiv || ''}" /></td>
-    <td><input type="date" class="paydate" value="${data.paydate || ''}" /></td>
-  `;
-
-  tbody.appendChild(newRow);
-
-  // Add input listeners to update totals and save data
-  newRow.querySelectorAll('input').forEach(input =>
-    input.addEventListener('input', () => {
-      updateTotals();
-      saveData();
-    })
-  );
-
-  // Trigger auto-fill from Yahoo when ticker is typed
-  newRow.querySelector('.ticker').addEventListener('change', function () {
-    const symbol = this.value.trim().toUpperCase();
-    if (symbol) fetchStockData(symbol, newRow);
-  });
-}
-
-
-
-  function saveData() {
+function saveData() {
   const rows = document.querySelectorAll('#stockTable tbody tr');
   const data = [];
 
   rows.forEach(row => {
     const inputs = row.querySelectorAll('input');
-    const obj = {
+    data.push({
       company: inputs[0].value,
       ticker: inputs[1].value,
       shares: inputs[2].value,
@@ -206,55 +212,25 @@ function addRow(data = {}) {
       yield: row.querySelector('.yield').textContent.replace('%', ''),
       exdiv: inputs[6].value,
       paydate: inputs[7].value
-    };
-    data.push(obj);
+    });
   });
 
   localStorage.setItem('dividendRows', JSON.stringify(data));
 }
 
-  function loadData() {
-  const saved = localStorage.getItem('dividendRows');
-  if (saved) {
-    const rows = JSON.parse(saved);
-    rows.forEach(row => addRow(row));
-    updateTotals();
+function loadData() {
+  const stored = localStorage.getItem('dividendRows');
+  if (stored) {
+    const data = JSON.parse(stored);
+    data.forEach(row => addRow(row));
   } else {
-    // If no data, create 1 default row
-    addRow();
+    addRow(); // add default empty row
   }
 }
 
-
-  
-
-
-  
-function updateTotals() {
-  const rows = document.querySelectorAll('#stockTable tbody tr');
-  let grandTotal = 0;
-
-  rows.forEach(row => {
-    const shares = parseFloat(row.querySelector('.shares').value) || 0;
-    const price = parseFloat(row.querySelector('.price').value) || 0;
-    const dividend = parseFloat(row.querySelector('.dividend').value) || 0;
-
-    const totalDiv = shares * dividend;
-    grandTotal += totalDiv;
-
-    row.querySelector('.totalDiv').textContent = `$${totalDiv.toFixed(2)}`;
-    const yieldPct = price ? ((dividend * 4) / price) * 100 : 0;
-    row.querySelector('.yield').textContent = `${yieldPct.toFixed(2)}%`;
-  });
-
-  document.getElementById('totalDivContainer').textContent =
-    `Total Dividend Income: $${grandTotal.toFixed(2)}`;
-}
-
-window.onload = updateTotals;
-document.querySelectorAll('#stockTable input').forEach(input =>
-  input.addEventListener('input', updateTotals)
-);
+window.onload = function () {
+  loadData();
+};
 </script>
 
 </body>
