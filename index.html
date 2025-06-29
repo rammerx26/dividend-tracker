@@ -107,29 +107,77 @@
 <div id="totalDivContainer">Total Dividend Income: $0.00</div>
 
 <script>
+
+function fetchStockData(symbol, row) {
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=summaryDetail`;
+
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const summary = data.quoteSummary?.result?.[0]?.summaryDetail;
+
+      if (!summary) throw new Error('No data');
+
+      const price = summary.previousClose?.raw || 0;
+      const dividend = summary.dividendRate?.raw || 0;
+      const yieldPct = summary.dividendYield?.raw ? summary.dividendYield.raw * 100 : 0;
+
+      const exDivDate = summary.exDividendDate?.raw;
+      const payDate = summary.dividendDate?.raw;
+
+      row.querySelector('.price').value = price.toFixed(2);
+      row.querySelector('.dividend').value = dividend.toFixed(2);
+      row.querySelector('.yield').textContent = `${yieldPct.toFixed(2)}%`;
+
+      if (exDivDate) {
+        const d = new Date(exDivDate * 1000);
+        row.querySelector('.exdiv').value = d.toISOString().split('T')[0];
+      }
+
+      if (payDate) {
+        const d = new Date(payDate * 1000);
+        row.querySelector('.paydate').value = d.toISOString().split('T')[0];
+      }
+
+      updateTotals();
+    })
+    .catch(err => {
+      alert(`Could not fetch data for ${symbol}`);
+      console.error(err);
+    });
+}
+
+  
 function addRow() {
   const tbody = document.querySelector('#stockTable tbody');
   const newRow = document.createElement('tr');
 
   newRow.innerHTML = `
     <td><input type="text" placeholder="Company name" style="width: 150px;" /></td>
-    <td><input type="text" placeholder="Ticker" style="width: 80px;" /></td>
+    <td><input type="text" placeholder="Ticker" class="ticker" style="width: 80px;" /></td>
     <td><input type="number" class="shares" value="0" /></td>
     <td><input type="number" class="price" step="0.01" value="0" /></td>
     <td><input type="number" class="dividend" step="0.001" value="0" /></td>
     <td class="totalDiv">$0.00</td>
     <td class="yield">0%</td>
-    <td><input type="date" /></td>
-    <td><input type="date" /></td>
+    <td><input type="date" class="exdiv" /></td>
+    <td><input type="date" class="paydate" /></td>
   `;
 
   tbody.appendChild(newRow);
 
-  // Add listeners to new inputs
+  // Reconnect inputs to updateTotals
   newRow.querySelectorAll('input').forEach(input =>
     input.addEventListener('input', updateTotals)
   );
+
+  // Add event listener for ticker auto-fill
+  newRow.querySelector('.ticker').addEventListener('change', function () {
+    const symbol = this.value.trim().toUpperCase();
+    if (symbol) fetchStockData(symbol, newRow);
+  });
 }
+
 
   
 function updateTotals() {
